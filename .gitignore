@@ -2,3 +2,11 @@
 .sqlx/
 dev.db
 cspell.json
+
+# Devenv
+.devenv*
+devenv.local.nix
+
+# direnv
+.direnv
+
