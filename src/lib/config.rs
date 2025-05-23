@@ -14,8 +14,8 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> anyhow::Result<Config> {
-        let server_port = load_env(SERVER_PORT_KEY)?;
-        let database_url = load_env(DATABASE_URL_KEY)?;
+        let server_port = load_env(SERVER_PORT_KEY).unwrap_or("3000".to_string());
+        let database_url = load_env(DATABASE_URL_KEY).unwrap_or("sqlite://dev.db".to_string());
 
         Ok(Config {
             server_port,

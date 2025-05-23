@@ -1,6 +1,8 @@
 use anyhow::{Context, anyhow};
+use sqlx::Executor;
 use sqlx::Transaction;
 use std::str::FromStr;
+use tracing::Level;
 use uuid::Uuid;
 
 use crate::domain::finance::{
@@ -47,11 +49,28 @@ impl Sqlite {
     /// Returns the generated UUID for the new expense.
     async fn save_expense(
         &self,
-        _tx: &mut Transaction<'_, sqlx::Sqlite>,
-        _name: &ExpenseName,
+        tx: &mut Transaction<'_, sqlx::Sqlite>,
+        name: &ExpenseName,
     ) -> Result<Uuid, sqlx::Error> {
-        // TODO: Implement the actual SQL query to save the expense
         let id = Uuid::new_v4();
+        let span = tracing::span!(Level::DEBUG, "expense", expense_id = ?id);
+        let _guard = span.enter();
+        let id_as_string = id.to_string();
+        let name = name.to_string();
+        tracing::event!(
+            Level::DEBUG,
+            "Saving expense with ID: {} and name: {}",
+            id_as_string,
+            name
+        );
+        let query = sqlx::query!(
+            "INSERT INTO expenses (id, name) VALUES ($1, $2)",
+            id_as_string,
+            name,
+        );
+        tx.execute(query).await?;
+
+        tracing::event!(Level::DEBUG, "Expense Saved");
         Ok(id)
     }
 }
