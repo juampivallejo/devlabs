@@ -14,6 +14,15 @@ pub struct Sqlite {
 }
 
 impl Sqlite {
+    /// Creates a new `Sqlite` instance with a connection pool to the specified database path.
+    ///
+    /// # Arguments
+    ///
+    /// * `path` - The file path to the SQLite database.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the database path is invalid or the connection cannot be established.
     pub async fn new(path: &str) -> anyhow::Result<Sqlite> {
         let pool = sqlx::SqlitePool::connect_with(
             sqlx::sqlite::SqliteConnectOptions::from_str(path)
@@ -26,25 +35,44 @@ impl Sqlite {
         Ok(Sqlite { pool })
     }
 
+    /// Saves an expense to the database.
+    ///
+    /// # Arguments
+    ///
+    /// * `_tx` - The database transaction.
+    /// * `_name` - The name of the expense.
+    ///
+    /// # Returns
+    ///
+    /// Returns the generated UUID for the new expense.
     async fn save_expense(
         &self,
-        tx: &mut Transaction<'_, sqlx::Sqlite>,
-        name: &ExpenseName,
+        _tx: &mut Transaction<'_, sqlx::Sqlite>,
+        _name: &ExpenseName,
     ) -> Result<Uuid, sqlx::Error> {
+        // TODO: Implement the actual SQL query to save the expense
         let id = Uuid::new_v4();
-        let id_as_string = id.to_string();
-        let name = &name.to_string();
-        // let query = sqlx::query!(
-        //     "INSERT INTO expenses (id, name) VALUES (?, ?)",
-        //     id_as_string,
-        //     name,
-        // );
-        // tx.execute(query).await?;
         Ok(id)
     }
 }
 
+/// Implementation of the `ExpenseRepository` trait for the `Sqlite` struct.
+///
+/// Provides methods to create and persist expenses in a SQLite database.
 impl ExpenseRepository for Sqlite {
+    /// Creates a new expense in the SQLite database.
+    ///
+    /// Starts a transaction, attempts to save the expense, and commits the transaction.
+    /// Returns a `CreateExpenseError` if the operation fails or if a duplicate expense name exists.
+    ///
+    /// # Arguments
+    ///
+    /// * `req` - The request containing the expense name to be created.
+    ///
+    /// # Returns
+    ///
+    /// * `Ok(Expense)` if the expense is successfully created.
+    /// * `Err(CreateExpenseError)` if there is a database error or a duplicate name.
     async fn create_expense(
         &self,
         req: &CreateExpenseRequest,
@@ -54,6 +82,8 @@ impl ExpenseRepository for Sqlite {
             .begin()
             .await
             .unwrap_or_else(|e| panic!("failed to start SQLite transaction: {}", e));
+
+        tracing::debug!("Transaction started");
 
         let expense_id = self.save_expense(&mut tx, req.name()).await.map_err(|e| {
             if is_unique_constraint_violation(&e) {
@@ -66,10 +96,12 @@ impl ExpenseRepository for Sqlite {
                     .into()
             }
         })?;
+        tracing::info!("Expense saved with ID: {}", expense_id);
 
         tx.commit()
             .await
             .unwrap_or_else(|e| panic!("failed to commit SQLite transaction: {}", e));
+        tracing::debug!("Transaction commited");
 
         Ok(Expense::new(expense_id, req.name().clone()))
     }

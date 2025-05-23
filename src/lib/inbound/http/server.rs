@@ -3,11 +3,6 @@
     implementation is opaque to module consumers.
 */
 
-mod api_error;
-mod api_success;
-mod handlers;
-mod responses;
-
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -26,8 +21,8 @@ pub struct HttpServerConfig<'a> {
 
 #[derive(Debug, Clone)]
 /// The global application state shared between all request handlers.
-struct AppState<PR: ExpenseRepository> {
-    expense_repo: Arc<PR>,
+pub(super) struct AppState<PR: ExpenseRepository> {
+    pub(super) expense_repo: Arc<PR>,
 }
 
 /// The application's HTTP server. The underlying HTTP package is opaque to module consumers.
@@ -39,7 +34,7 @@ pub struct HttpServer {
 impl HttpServer {
     /// Returns a new HTTP server bound to the port specified in `config`.
     pub async fn new(
-        post_repo: impl ExpenseRepository,
+        expense_repo: impl ExpenseRepository,
         config: HttpServerConfig<'_>,
     ) -> anyhow::Result<Self> {
         let trace_layer = tower_http::trace::TraceLayer::new_for_http().make_span_with(
@@ -51,9 +46,11 @@ impl HttpServer {
 
         // Construct dependencies to inject into handlers.
         let state = AppState {
-            expense_repo: Arc::new(post_repo),
+            expense_repo: Arc::new(expense_repo),
         };
+        tracing::debug!("Initialized AppState");
 
+        tracing::info!("Starting server with config: {:?}", config);
         let router = axum::Router::new()
             .nest("/api", api_routes())
             .layer(trace_layer)
@@ -77,7 +74,5 @@ impl HttpServer {
 }
 
 fn api_routes<PR: ExpenseRepository>() -> Router<AppState<PR>> {
-    Router::new()
-        .route("/expenses", post(create_expense::<PR>))
-        .route("/foo", post(|| async { "OK" }))
+    Router::new().route("/expenses", post(create_expense::<PR>))
 }

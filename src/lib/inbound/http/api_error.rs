@@ -9,12 +9,18 @@ use crate::{
     inbound::http::responses::ApiResponseBody,
 };
 
+/// Represents errors that can occur in the API layer.
+///
+/// This enum is used to map domain and infrastructure errors to HTTP responses.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ApiError {
+    /// Internal server error (HTTP 500).
     InternalServerError(String),
+    /// Unprocessable entity error (HTTP 422).
     UnprocessableEntity(String),
 }
 
+/// Converts `CreateExpenseError` into an `ApiError`.
 impl From<CreateExpenseError> for ApiError {
     fn from(e: CreateExpenseError) -> Self {
         match e {
@@ -29,18 +35,23 @@ impl From<CreateExpenseError> for ApiError {
     }
 }
 
+/// Converts `ExpenseNameEmptyError` into an `ApiError`.
 impl From<ExpenseNameEmptyError> for ApiError {
     fn from(_: ExpenseNameEmptyError) -> Self {
         Self::UnprocessableEntity("expense name cannot be empty".to_string())
     }
 }
 
+/// Converts `anyhow::Error` into an `ApiError`.
 impl From<anyhow::Error> for ApiError {
     fn from(e: anyhow::Error) -> Self {
         Self::InternalServerError(e.to_string())
     }
 }
 
+/// Converts an `ApiError` into an HTTP response.
+///
+/// Maps the error variant to the appropriate HTTP status code and error message.
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
         use ApiError::*;

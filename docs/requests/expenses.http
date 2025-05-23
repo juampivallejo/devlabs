@@ -1,0 +1,20 @@
+
+### Create expense Request
+
+POST /api/expenses
+Host: localhost:3000
+Content-Type: application/json
+
+{
+    "name": "Expense Name"
+}
+
+### Request with Trailing slash
+
+POST /api/expenses/
+Host: localhost:3000
+Content-Type: application/json
+
+{
+    "name": "Expense Name"
+}

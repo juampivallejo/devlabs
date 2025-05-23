@@ -1,29 +1,13 @@
 use axum::{Json, extract::State, http::StatusCode};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
+use crate::inbound::http::server::AppState;
 use crate::{
-    domain::finance::{
-        models::expense::{CreateExpenseRequest, Expense, ExpenseNameEmptyError},
-        ports::ExpenseRepository,
-    },
-    inbound::http::{AppState, api_error::ApiError, api_success::ApiSuccess},
+    domain::finance::{models::expense::Expense, ports::ExpenseRepository},
+    inbound::http::{api_error::ApiError, api_success::ApiSuccess},
 };
 
-///
-/// `CreateExpenseHttpRequestBody`
-/// The Request body for creating an [Expense]
-///
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-pub struct CreateExpenseHttpRequestBody {
-    name: String,
-}
-
-impl CreateExpenseHttpRequestBody {
-    /// Converts the HTTP request body into a domain request.
-    fn try_into_domain(self) -> Result<CreateExpenseRequest, ExpenseNameEmptyError> {
-        Ok(CreateExpenseRequest::new(&self.name)?)
-    }
-}
+use super::expense_schema::CreateExpenseHttpRequestBody;
 
 ///
 /// `CreateExpenseResponseData`
@@ -40,12 +24,6 @@ impl From<&Expense> for CreateExpenseResponseData {
             id: expense.id().to_string(),
         }
     }
-}
-
-/// The body of an [Expense] creation request.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
-pub struct CreateExpenseRequestBody {
-    name: String,
 }
 
 /// Create a new [Expense].
