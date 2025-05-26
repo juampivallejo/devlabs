@@ -5,6 +5,8 @@ use std::str::FromStr;
 use tracing::Level;
 use uuid::Uuid;
 
+use crate::domain::finance::models::expense::ListExpensesRequest;
+use crate::domain::finance::models::expense::PaginationError;
 use crate::domain::finance::{
     models::expense::{CreateExpenseError, CreateExpenseRequest, Expense, ExpenseName},
     ports::ExpenseRepository,
@@ -123,6 +125,13 @@ impl ExpenseRepository for Sqlite {
         tracing::debug!("Transaction commited");
 
         Ok(Expense::new(expense_id, req.name().clone()))
+    }
+
+    async fn list_expenses(
+        &self,
+        req: &ListExpensesRequest,
+    ) -> Result<Vec<Expense>, PaginationError> {
+        Ok(Vec::new())
     }
 }
 

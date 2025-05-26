@@ -7,11 +7,13 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use axum::Router;
-use axum::routing::post;
+use axum::routing::{get, post};
 use tokio::net;
 
 use crate::domain::finance::ports::ExpenseRepository;
 use crate::inbound::http::handlers::expense::create_expense;
+
+use super::handlers::expense::list_expenses;
 
 /// Configuration for the HTTP server.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -74,5 +76,7 @@ impl HttpServer {
 }
 
 fn api_routes<PR: ExpenseRepository>() -> Router<AppState<PR>> {
-    Router::new().route("/expenses", post(create_expense::<PR>))
+    Router::new()
+        .route("/expenses", get(list_expenses::<PR>))
+        .route("/expenses", post(create_expense::<PR>))
 }

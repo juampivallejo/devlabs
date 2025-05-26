@@ -18,3 +18,9 @@ Content-Type: application/json
 {
     "name": "Expense Name"
 }
+
+### List Expenses
+GET /api/expenses?page=1&size=0
+Host: localhost:3000
+Content-Type: application/json
+

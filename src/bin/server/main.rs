@@ -14,12 +14,12 @@ async fn main() -> anyhow::Result<()> {
 
     let config = Config::from_env()?;
     tracing::info!("Starting server with config: {:?}", config);
-    let post_repo = Sqlite::new(&config.database_url).await?;
+    let expenses_repo = Sqlite::new(&config.database_url).await?;
 
     let server_config = HttpServerConfig {
         port: &config.server_port,
     };
     tracing::info!("Starting server with server config: {:?}", server_config);
-    let http_server = HttpServer::new(post_repo, server_config).await?;
+    let http_server = HttpServer::new(expenses_repo, server_config).await?;
     http_server.run().await
 }

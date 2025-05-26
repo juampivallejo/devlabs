@@ -65,10 +65,37 @@ impl CreateExpenseRequest {
     }
 }
 
+/// The fields required by the domain to create an [Expense].
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, From)]
+pub struct ListExpensesRequest {
+    page: u32,
+    size: u32,
+}
+
+impl ListExpensesRequest {
+    pub fn new(page: u32, size: u32) -> Result<Self, PaginationError> {
+        if page == 0 || size == 0 {
+            Err(PaginationError::InvalidPage { page, size })
+        } else {
+            Ok(Self { page, size })
+        }
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum CreateExpenseError {
     #[error("expense with name {name} already exists")]
     Duplicate { name: String },
+    #[error(transparent)]
+    Unknown(#[from] anyhow::Error),
+}
+
+#[derive(Debug, Error)]
+pub enum PaginationError {
+    #[error("Invalid page {page} or size {size}")]
+    InvalidPage { page: u32, size: u32 },
+    #[error("Page not found: {page}")]
+    PageNotFound { page: u32 },
     #[error(transparent)]
     Unknown(#[from] anyhow::Error),
 }

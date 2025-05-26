@@ -5,7 +5,9 @@ use axum::{
 };
 
 use crate::{
-    domain::finance::models::expense::{CreateExpenseError, ExpenseNameEmptyError},
+    domain::finance::models::expense::{
+        CreateExpenseError, ExpenseNameEmptyError, PaginationError,
+    },
     inbound::http::responses::ApiResponseBody,
 };
 
@@ -18,6 +20,8 @@ pub enum ApiError {
     InternalServerError(String),
     /// Unprocessable entity error (HTTP 422).
     UnprocessableEntity(String),
+    /// Not found error (HTTP 404).
+    NotFoundError(String),
 }
 
 /// Converts `CreateExpenseError` into an `ApiError`.
@@ -28,6 +32,23 @@ impl From<CreateExpenseError> for ApiError {
                 Self::UnprocessableEntity(format!("expense with name {} already exists", name))
             }
             CreateExpenseError::Unknown(cause) => {
+                tracing::error!("{:?}\n", cause);
+                Self::InternalServerError("Internal server error".to_string())
+            }
+        }
+    }
+}
+/// Converts `PaginationError` into an `ApiError`.
+impl From<PaginationError> for ApiError {
+    fn from(e: PaginationError) -> Self {
+        match e {
+            PaginationError::InvalidPage { page, size } => {
+                Self::UnprocessableEntity(format!("Invalid page: {page} or size: {size}"))
+            }
+            PaginationError::PageNotFound { page } => {
+                Self::NotFoundError(format!("Page {page} not found"))
+            }
+            PaginationError::Unknown(cause) => {
                 tracing::error!("{:?}\n", cause);
                 Self::InternalServerError("Internal server error".to_string())
             }
@@ -73,6 +94,14 @@ impl IntoResponse for ApiError {
                 Json(ApiResponseBody::new_error(
                     StatusCode::UNPROCESSABLE_ENTITY,
                     message,
+                )),
+            )
+                .into_response(),
+            NotFoundError(_) => (
+                StatusCode::NOT_FOUND,
+                Json(ApiResponseBody::new_error(
+                    StatusCode::NOT_FOUND,
+                    "Not Found".to_string(),
                 )),
             )
                 .into_response(),
