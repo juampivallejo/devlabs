@@ -1,8 +1,10 @@
+use thiserror::Error;
+
 #[allow(unused_imports)] // Used in comment
 use super::models::expense::ExpenseName;
 
 use super::models::expense::{
-    CreateExpenseError, CreateExpenseRequest, Expense, ListExpensesRequest, PaginationError,
+    CreateExpenseError, CreateExpenseRequest, Expense, ListExpensesRequest,
 };
 
 /// `ExpenseRepository` represents a store of expense data.
@@ -23,5 +25,13 @@ pub trait ExpenseRepository: Clone + Send + Sync + 'static {
     fn list_expenses(
         &self,
         req: &ListExpensesRequest,
-    ) -> impl Future<Output = Result<Vec<Expense>, PaginationError>> + Send;
+    ) -> impl Future<Output = Result<Vec<Expense>, ExpenseRepositoryError>> + Send;
+}
+
+#[derive(Debug, Error)]
+pub enum ExpenseRepositoryError {
+    #[error("Repository Timed out")]
+    Timeout,
+    #[error(transparent)]
+    Unknown(#[from] anyhow::Error),
 }

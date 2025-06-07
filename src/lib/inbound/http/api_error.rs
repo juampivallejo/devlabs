@@ -5,8 +5,9 @@ use axum::{
 };
 
 use crate::{
-    domain::finance::models::expense::{
-        CreateExpenseError, ExpenseNameEmptyError, PaginationError,
+    domain::finance::{
+        models::expense::{CreateExpenseError, ExpenseNameEmptyError, PaginationError},
+        ports::ExpenseRepositoryError,
     },
     inbound::http::responses::ApiResponseBody,
 };
@@ -53,6 +54,11 @@ impl From<PaginationError> for ApiError {
                 Self::InternalServerError("Internal server error".to_string())
             }
         }
+    }
+}
+impl From<ExpenseRepositoryError> for ApiError {
+    fn from(_: ExpenseRepositoryError) -> Self {
+        Self::InternalServerError("Internal server error".to_string())
     }
 }
 

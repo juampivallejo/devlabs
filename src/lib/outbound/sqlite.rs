@@ -1,12 +1,11 @@
 use anyhow::{Context, anyhow};
-use sqlx::Executor;
-use sqlx::Transaction;
+use sqlx::{Executor, Row, Transaction};
 use std::str::FromStr;
 use tracing::Level;
 use uuid::Uuid;
 
 use crate::domain::finance::models::expense::ListExpensesRequest;
-use crate::domain::finance::models::expense::PaginationError;
+use crate::domain::finance::ports::ExpenseRepositoryError;
 use crate::domain::finance::{
     models::expense::{CreateExpenseError, CreateExpenseRequest, Expense, ExpenseName},
     ports::ExpenseRepository,
@@ -43,8 +42,8 @@ impl Sqlite {
     ///
     /// # Arguments
     ///
-    /// * `_tx` - The database transaction.
-    /// * `_name` - The name of the expense.
+    /// * `tx` - The database transaction.
+    /// * `name` - The name of the expense.
     ///
     /// # Returns
     ///
@@ -74,6 +73,49 @@ impl Sqlite {
 
         tracing::event!(Level::DEBUG, "Expense Saved");
         Ok(id)
+    }
+    /// Reads expenses form the database
+    ///
+    /// # Arguments
+    ///
+    /// * `page` - page number for pagination
+    /// * `size` - number of expenses per page
+    ///
+    /// Returns the list of expenses
+    async fn read_expenses(&self) -> Result<Vec<Expense>, sqlx::Error> {
+        let rows = sqlx::query(
+            r#"
+            SELECT id, name
+            FROM expenses
+            ORDER BY name DESC
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut expenses = Vec::with_capacity(rows.len());
+        for row in rows {
+            let id_str: String = row.try_get("id")?;
+            let name_str: String = row.try_get("name")?;
+
+            let id = uuid::Uuid::parse_str(&id_str).map_err(|e| sqlx::Error::ColumnDecode {
+                index: "id".into(),
+                source: Box::new(e),
+            })?;
+            let name = ExpenseName::new(&name_str).map_err(|e| sqlx::Error::ColumnDecode {
+                index: "name".into(),
+                source: Box::new(e),
+            })?;
+
+            expenses.push(Expense::new(id, name));
+        }
+
+        tracing::event!(
+            tracing::Level::DEBUG,
+            "Retrieved list of expenses: {} items",
+            expenses.len()
+        );
+        Ok(expenses)
     }
 }
 
@@ -122,16 +164,18 @@ impl ExpenseRepository for Sqlite {
         tx.commit()
             .await
             .unwrap_or_else(|e| panic!("failed to commit SQLite transaction: {}", e));
-        tracing::debug!("Transaction commited");
+        tracing::debug!("Transaction committed");
 
         Ok(Expense::new(expense_id, req.name().clone()))
     }
 
     async fn list_expenses(
         &self,
-        req: &ListExpensesRequest,
-    ) -> Result<Vec<Expense>, PaginationError> {
-        Ok(Vec::new())
+        _req: &ListExpensesRequest,
+    ) -> Result<Vec<Expense>, ExpenseRepositoryError> {
+        self.read_expenses()
+            .await
+            .map_err(|_| ExpenseRepositoryError::Unknown(anyhow!("Error listing expenses")))
     }
 }
 

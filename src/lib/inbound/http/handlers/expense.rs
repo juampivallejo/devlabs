@@ -46,17 +46,16 @@ impl From<&Expense> for ExpenseResponseData {
 }
 
 ///
-/// `ListExpenseResponseData`
-/// The response body data field for successful [Expense] creation.
+/// `ListItemsResponseData`
+/// The generic response body data field for listing objects.
 ///
-/// TODO: Make this generic over the response data type.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct ListExpenseResponseData {
-    items: Vec<ExpenseResponseData>,
+pub struct ListItemsResponseData<T> {
+    items: Vec<T>,
 }
 
-impl ListExpenseResponseData {
-    pub fn new(items: Vec<ExpenseResponseData>) -> Self {
+impl<T> ListItemsResponseData<T> {
+    pub fn new(items: Vec<T>) -> Self {
         Self { items }
     }
 }
@@ -90,7 +89,7 @@ pub async fn create_expense<PR: ExpenseRepository>(
 pub async fn list_expenses<PR>(
     State(state): State<AppState<PR>>,
     Query(query): Query<PaginationRequestQueryParams>,
-) -> Result<ApiSuccess<ListExpenseResponseData>, ApiError>
+) -> Result<ApiSuccess<ListItemsResponseData<ExpenseResponseData>>, ApiError>
 where
     PR: ExpenseRepository + Send + Sync + 'static,
 {
@@ -104,7 +103,7 @@ where
         .map(|expenses| {
             ApiSuccess::new(
                 StatusCode::CREATED,
-                ListExpenseResponseData::new(
+                ListItemsResponseData::new(
                     expenses.iter().map(ExpenseResponseData::from).collect(),
                 ),
             )
@@ -119,18 +118,16 @@ mod tests {
     use anyhow::anyhow;
     use uuid::Uuid;
 
-    use crate::domain::finance::models::expense::{
-        CreateExpenseError, ListExpensesRequest, PaginationError,
-    };
+    use crate::domain::finance::models::expense::{CreateExpenseError, ListExpensesRequest};
     use crate::domain::finance::models::expense::{CreateExpenseRequest, Expense, ExpenseName};
-    use crate::domain::finance::ports::ExpenseRepository;
+    use crate::domain::finance::ports::{ExpenseRepository, ExpenseRepositoryError};
 
     use super::*;
 
     #[derive(Clone)]
     struct MockExpenseRepository {
         create_expense_result: Arc<std::sync::Mutex<Result<Expense, CreateExpenseError>>>,
-        list_expenses_result: Arc<std::sync::Mutex<Result<Vec<Expense>, PaginationError>>>,
+        list_expenses_result: Arc<std::sync::Mutex<Result<Vec<Expense>, ExpenseRepositoryError>>>,
     }
     impl MockExpenseRepository {
         fn new() -> Self {
@@ -157,9 +154,9 @@ mod tests {
         async fn list_expenses(
             &self,
             _: &ListExpensesRequest,
-        ) -> Result<Vec<Expense>, PaginationError> {
+        ) -> Result<Vec<Expense>, ExpenseRepositoryError> {
             let mut guard = self.list_expenses_result.lock();
-            let mut result = Err(PaginationError::Unknown(anyhow!("substitute error")));
+            let mut result = Err(ExpenseRepositoryError::Unknown(anyhow!("substitute error")));
             mem::swap(guard.as_deref_mut().unwrap(), &mut result);
             result
         }
