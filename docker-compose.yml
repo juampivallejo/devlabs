@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:17
+    container_name: devlabs_postgres
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: devlabs
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        DATABASE_URL: "postgres://user:password@db:5432/devlabs"
+    container_name: devlabs_api
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: "postgres://user:password@db:5432/devlabs"
+      RUST_LOG: info
+    depends_on:
+      - db
+    restart: unless-stopped
+
+volumes:
+  pgdata:
