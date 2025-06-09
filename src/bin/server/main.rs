@@ -1,7 +1,7 @@
 use api_lib::{
     config::Config,
     inbound::http::{HttpServer, HttpServerConfig},
-    outbound::sqlite::Sqlite,
+    outbound::postgres::Postgres,
 };
 use tracing_subscriber::EnvFilter;
 
@@ -14,7 +14,7 @@ async fn main() -> anyhow::Result<()> {
 
     let config = Config::from_env()?;
     tracing::info!("Starting server with config: {:?}", config);
-    let expenses_repo = Sqlite::new(&config.database_url).await?;
+    let expenses_repo = Postgres::new(&config.database_url).await?;
 
     let server_config = HttpServerConfig {
         port: &config.server_port,

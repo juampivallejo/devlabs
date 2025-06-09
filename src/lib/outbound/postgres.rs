@@ -12,30 +12,29 @@ use crate::domain::finance::{
 };
 
 #[derive(Debug, Clone)]
-pub struct Sqlite {
-    pool: sqlx::SqlitePool,
+pub struct Postgres {
+    pool: sqlx::PgPool,
 }
 
-impl Sqlite {
-    /// Creates a new `Sqlite` instance with a connection pool to the specified database path.
+impl Postgres {
+    /// Creates a new `Postgres` instance with a connection pool to the specified database path.
     ///
     /// # Arguments
     ///
-    /// * `path` - The file path to the SQLite database.
+    /// * `path` - The file path to the Postgres database.
     ///
     /// # Errors
     ///
     /// Returns an error if the database path is invalid or the connection cannot be established.
-    pub async fn new(path: &str) -> anyhow::Result<Sqlite> {
-        let pool = sqlx::SqlitePool::connect_with(
-            sqlx::sqlite::SqliteConnectOptions::from_str(path)
-                .with_context(|| format!("invalid database path {}", path))?
-                .pragma("foreign_keys", "ON"),
+    pub async fn new(path: &str) -> anyhow::Result<Postgres> {
+        let pool = sqlx::PgPool::connect_with(
+            sqlx::postgres::PgConnectOptions::from_str(path)
+                .with_context(|| format!("invalid database url {}", path))?,
         )
         .await
         .with_context(|| format!("failed to open database at {}", path))?;
 
-        Ok(Sqlite { pool })
+        Ok(Postgres { pool })
     }
 
     /// Saves an expense to the database.
@@ -50,7 +49,7 @@ impl Sqlite {
     /// Returns the generated UUID for the new expense.
     async fn save_expense(
         &self,
-        tx: &mut Transaction<'_, sqlx::Sqlite>,
+        tx: &mut Transaction<'_, sqlx::Postgres>,
         name: &ExpenseName,
     ) -> Result<Uuid, sqlx::Error> {
         let id = Uuid::new_v4();
@@ -119,11 +118,11 @@ impl Sqlite {
     }
 }
 
-/// Implementation of the `ExpenseRepository` trait for the `Sqlite` struct.
+/// Implementation of the `ExpenseRepository` trait for the `Postgres` struct.
 ///
-/// Provides methods to create and persist expenses in a SQLite database.
-impl ExpenseRepository for Sqlite {
-    /// Creates a new expense in the SQLite database.
+/// Provides methods to create and persist expenses in a Postgres database.
+impl ExpenseRepository for Postgres {
+    /// Creates a new expense in the Postgres database.
     ///
     /// Starts a transaction, attempts to save the expense, and commits the transaction.
     /// Returns a `CreateExpenseError` if the operation fails or if a duplicate expense name exists.
@@ -144,7 +143,7 @@ impl ExpenseRepository for Sqlite {
             .pool
             .begin()
             .await
-            .unwrap_or_else(|e| panic!("failed to start SQLite transaction: {}", e));
+            .unwrap_or_else(|e| panic!("failed to start Postgres transaction: {}", e));
 
         tracing::debug!("Transaction started");
 
@@ -163,7 +162,7 @@ impl ExpenseRepository for Sqlite {
 
         tx.commit()
             .await
-            .unwrap_or_else(|e| panic!("failed to commit SQLite transaction: {}", e));
+            .unwrap_or_else(|e| panic!("failed to commit Postgres transaction: {}", e));
         tracing::debug!("Transaction committed");
 
         Ok(Expense::new(expense_id, req.name().clone()))

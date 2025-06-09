@@ -102,7 +102,7 @@ where
         .map_err(ApiError::from)
         .map(|expenses| {
             ApiSuccess::new(
-                StatusCode::CREATED,
+                StatusCode::OK,
                 ListItemsResponseData::new(
                     expenses.iter().map(ExpenseResponseData::from).collect(),
                 ),

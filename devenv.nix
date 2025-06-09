@@ -2,7 +2,7 @@
 
 {
   env.GREET = "devenv";
-  env.DATABASE_URL = "sqlite://dev.db";
+  env.DATABASE_URL = "postgres://user:password@localhost:5432/devlabs";
   env.RUST_LOG = "debug";
   cachix.enable = false;
 
