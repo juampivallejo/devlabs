@@ -32,9 +32,6 @@ ENV SERVER_PORT=${SERVER_PORT}
 
 WORKDIR /app
 
-# Install runtime dependencies
-# RUN apt-get update && apt-get install -y libssl1.1 ca-certificates && rm -rf /var/lib/apt/lists/*
-
 COPY --from=builder /app/target/release/api /app/app
 
 EXPOSE $SERVER_PORT
