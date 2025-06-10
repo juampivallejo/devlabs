@@ -25,7 +25,7 @@ pub trait FinanceService: Clone + Send + Sync + 'static {
     fn list_expenses(
         &self,
         req: &ListExpensesRequest,
-    ) -> impl Future<Output = Result<Vec<Expense>, ExpenseRepositoryError>> + Send;
+    ) -> impl Future<Output = Result<Vec<Expense>, anyhow::Error>> + Send;
 }
 
 /// `ExpenseRepository` represents a store of expense data.
@@ -65,6 +65,9 @@ pub trait FinanceMetrics: Send + Sync + Clone + 'static {
 
     /// Record an expense creation failure.
     fn record_expense_creation_failure(&self) -> impl Future<Output = ()> + Send;
+
+    /// Record expenses retrieval success.
+    fn record_expense_list_success(&self) -> impl Future<Output = ()> + Send;
 }
 
 /// `ExpenseNotifier` triggers notifications to expenses.

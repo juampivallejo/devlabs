@@ -10,7 +10,7 @@ use axum::Router;
 use axum::routing::{get, post};
 use tokio::net;
 
-use crate::domain::finance::ports::ExpenseRepository;
+use crate::domain::finance::ports::FinanceService;
 use crate::inbound::http::handlers::expense::create_expense;
 
 use super::handlers::expense::list_expenses;
@@ -23,8 +23,8 @@ pub struct HttpServerConfig<'a> {
 
 #[derive(Debug, Clone)]
 /// The global application state shared between all request handlers.
-pub(super) struct AppState<PR: ExpenseRepository> {
-    pub(super) expense_repo: Arc<PR>,
+pub(super) struct AppState<FS: FinanceService> {
+    pub(super) finance_service: Arc<FS>,
 }
 
 /// The application's HTTP server. The underlying HTTP package is opaque to module consumers.
@@ -36,7 +36,7 @@ pub struct HttpServer {
 impl HttpServer {
     /// Returns a new HTTP server bound to the port specified in `config`.
     pub async fn new(
-        expense_repo: impl ExpenseRepository,
+        finance_service: impl FinanceService,
         config: HttpServerConfig<'_>,
     ) -> anyhow::Result<Self> {
         let trace_layer = tower_http::trace::TraceLayer::new_for_http().make_span_with(
@@ -48,7 +48,7 @@ impl HttpServer {
 
         // Construct dependencies to inject into handlers.
         let state = AppState {
-            expense_repo: Arc::new(expense_repo),
+            finance_service: Arc::new(finance_service),
         };
         tracing::debug!("Initialized AppState");
 
@@ -75,8 +75,8 @@ impl HttpServer {
     }
 }
 
-fn api_routes<PR: ExpenseRepository>() -> Router<AppState<PR>> {
+fn api_routes<FS: FinanceService>() -> Router<AppState<FS>> {
     Router::new()
-        .route("/expenses", get(list_expenses::<PR>))
-        .route("/expenses", post(create_expense::<PR>))
+        .route("/expenses", get(list_expenses::<FS>))
+        .route("/expenses", post(create_expense::<FS>))
 }
